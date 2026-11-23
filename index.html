@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anotar gastos</title>
+<meta name="description" content="Bloco de notas de gastos que funciona sem internet. Os dados ficam só no seu telemóvel.">
+<meta name="theme-color" content="#173f8f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#eef2f8; --panel:#ffffff; --panel-2:#f4f6fb; --ink:#14213d; --muted:#5d6883; --line:#dbe2ee;
+  --accent:#1c4fb0; --accent-ink:#ffffff; --accent-soft:#e3ebfa; --head:#173f8f; --head-ink:#ffffff; --send:#173f8f; --send-ink:#ffffff;
+  --neg:#b4232c; --pos:#18794e; --warn-soft:#fff4dc; --warn-ink:#7a5200; --shadow:0 1px 2px rgba(20,33,61,.06),0 4px 16px rgba(20,33,61,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0b1220; --panel:#131c2e; --panel-2:#1a2438; --ink:#e7ecf6; --muted:#9aa6c0; --line:#26324a;
+    --accent:#6f9bff; --accent-ink:#0b1220; --accent-soft:#1c2a48; --head:#0f1a30; --head-ink:#e7ecf6; --send:#e7ecf6; --send-ink:#0b1220;
+    --neg:#ff7b84; --pos:#4cd59a; --warn-soft:#3a2f12; --warn-ink:#ffd27a; --shadow:none; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4}
+button,input{font:inherit;color:inherit}
+header{background:var(--head);color:var(--head-ink);padding:calc(env(safe-area-inset-top) + 14px) 18px 16px}
+header h1{margin:0;font-size:20px;font-weight:700}
+header .tot{margin-top:6px;font-size:14px;opacity:.85}
+header .tot b{font-size:22px;opacity:1;display:block;margin-top:2px}
+main{padding:14px 14px calc(env(safe-area-inset-bottom) + 110px);max-width:560px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+.seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:9px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button.on.d{color:var(--neg)} .seg button.on.r{color:var(--pos)}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.inp{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 13px;font-size:17px;outline:none;-webkit-appearance:none;appearance:none}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.amt{font-size:30px;font-weight:700;text-align:center;letter-spacing:.5px}
+.row{display:flex;gap:10px;align-items:center;margin-top:12px}
+.field{margin-top:12px}
+.date-btn{border:0;background:none;color:var(--accent);font-weight:600;padding:6px 0}
+.btn{border:0;border-radius:12px;padding:13px 16px;font-weight:700;font-size:16px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);width:100%;margin-top:14px;font-size:17px}
+.btn.danger{color:var(--neg)}
+.btn:disabled{opacity:.5}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:22px 4px 8px;font-weight:700}
+.day{margin-top:14px}
+.day h3{font-size:13px;color:var(--muted);margin:0 6px 6px;font-weight:600;display:flex;justify-content:space-between}
+.list{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:0;border-top:1px solid var(--line);width:100%;background:none;text-align:left}
+.item:first-child{border-top:0}
+.item .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .v{font-weight:700;white-space:nowrap}
+.item .v.neg{color:var(--neg)} .item .v.pos{color:var(--pos)}
+.item .s{font-size:12px;color:var(--muted);white-space:nowrap}
+.empty{text-align:center;color:var(--muted);padding:26px 10px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--line)}
+.bar .btn{width:100%;max-width:560px;display:block;margin:0 auto;background:var(--send);color:var(--send-ink);border-color:var(--send)}
+.links{text-align:center;margin-top:18px}
+.links button{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:14px;padding:8px}
+.note{font-size:13px;color:var(--muted);text-align:center;margin:14px 6px 0}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--panel);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 16px)}
+.sheet h3{margin:0 0 12px;font-size:18px}
+.sheet .warn{background:var(--warn-soft);color:var(--warn-ink);border-radius:10px;padding:9px 11px;font-size:14px;margin-bottom:12px}
+.sheet .row .btn{flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 84px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:15px;z-index:30;max-width:90vw;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>Anotar gastos</h1>
+  <div class="tot" id="tot"></div>
+</header>
+<main>
+  <form class="card" id="form" autocomplete="off">
+    <div class="seg" id="type"><button type="button" class="d on" data-t="despesa">Gasto</button><button type="button" class="r" data-t="receita">Entrada</button></div>
+    <label for="amt">Quanto?</label>
+    <input class="inp amt" id="amt" inputmode="decimal" placeholder="0,00" enterkeyhint="next">
+    <div class="field"><label for="desc">O que foi?</label>
+    <input class="inp" id="desc" placeholder="Ex.: farmácia, pão, jantar…" maxlength="80" enterkeyhint="done"></div>
+    <div class="row" style="justify-content:space-between"><span style="color:var(--muted);font-size:14px">Data</span>
+      <span><button type="button" class="date-btn" id="dateBtn"></button><input type="date" id="date" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px"></span></div>
+    <button class="btn primary" type="submit">Anotar</button>
+  </form>
+  <div id="list"></div>
+  <div class="links"><button type="button" id="cleanBtn">Apagar as anotações já enviadas</button></div>
+  <p class="note">🔒 As anotações ficam só neste telemóvel. Funciona sem internet.</p>
+</main>
+<div class="bar"><button class="btn" id="sendBtn" type="button"></button></div>
+
+<script>
+'use strict';
+const KEY='anotar-gastos-v1';
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const eur=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'EUR'});
+const fmt=v=>eur.format(v||0);
+const pad=n=>String(n).padStart(2,'0');
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const newId=()=>Date.now().toString(36).slice(-5)+Math.random().toString(36).slice(2,5);
+
+let S={notes:[]}, storageOK=true;
+try{ const raw=localStorage.getItem(KEY); if(raw) S=JSON.parse(raw); }catch(e){ storageOK=false; }
+if(!Array.isArray(S.notes)) S.notes=[];
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){ storageOK=false; toast('Não foi possível salvar neste telemóvel.'); } }
+try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
+
+function parseAmt(s){ s=String(s||'').replace(/[€\s]/g,''); if(!s) return NaN;
+  if(s.includes(',')) s=s.replace(/\./g,'').replace(',','.'); return Math.round(parseFloat(s)*100)/100; }
+function dateLabel(iso){ const t=todayISO(); if(iso===t) return 'Hoje';
+  const y=new Date(); y.setDate(y.getDate()-1); if(iso===`${y.getFullYear()}-${pad(y.getMonth()+1)}-${pad(y.getDate())}`) return 'Ontem';
+  const d=new Date(iso+'T12:00'); return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`; }
+const br=iso=>`${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}`;
+
+let type='despesa', date=todayISO();
+function setDate(d){ date=d||todayISO(); $('#date').value=date; $('#dateBtn').textContent=dateLabel(date)+' ▾'; }
+$('#type').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; type=b.dataset.t; $('#type').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); });
+$('#dateBtn').addEventListener('click',()=>{ const i=$('#date'); if(i.showPicker){ try{ i.showPicker(); return; }catch(e){} } i.focus(); i.click(); });
+$('#date').addEventListener('change',e=>{ const v=e.target.value; setDate(v&&v<=todayISO()?v:todayISO()); });
+$('#amt').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#desc').focus(); } });
+$('#form').addEventListener('submit',e=>{
+  e.preventDefault();
+  const amount=parseAmt($('#amt').value), desc=$('#desc').value.replace(/[\r\n·#]+/g,' ').replace(/\s+/g,' ').trim();
+  if(!(amount>0)){ toast('Escreva quanto foi (ex.: 12,50).'); $('#amt').focus(); return; }
+  if(!desc){ toast('Escreva o que foi.'); $('#desc').focus(); return; }
+  S.notes.push({id:newId(),date,desc,amount,type,created:Date.now(),sent:false}); save();
+  $('#amt').value=''; $('#desc').value=''; $('#amt').blur(); $('#desc').blur(); setDate(todayISO());
+  render(); toast(type==='receita'?'Entrada anotada.':'Gasto anotado.');
+});
+
+function render(){
+  const m=todayISO().slice(0,7), mes=S.notes.filter(n=>n.date.startsWith(m));
+  const g=mes.filter(n=>n.type!=='receita').reduce((s,n)=>s+n.amount,0);
+  $('#tot').innerHTML=`Anotado em ${MESES[+m.slice(5)-1]}<b>${fmt(g)}</b>`;
+  const l=[...S.notes].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+  if(!l.length){ $('#list').innerHTML='<h2>Anotações</h2><div class="list"><div class="empty">Nada anotado ainda.<br>Anote o primeiro gasto acima.</div></div>'; }
+  else{
+    const days={}; l.forEach(n=>(days[n.date]=days[n.date]||[]).push(n));
+    $('#list').innerHTML='<h2>Anotações</h2>'+Object.entries(days).map(([d,ns])=>{
+      const t=ns.filter(n=>n.type!=='receita').reduce((s,n)=>s+n.amount,0);
+      return `<div class="day"><h3><span>${esc(dateLabel(d))}</span><span>${t?fmt(t):''}</span></h3><div class="list">${ns.map(n=>`<button type="button" class="item" data-id="${n.id}">
+        <span class="d">${esc(n.desc)}</span>${n.sent?'<span class="s">✓ enviada</span>':''}
+        <span class="v ${n.type==='receita'?'pos':'neg'}">${n.type==='receita'?'+':'−'}${fmt(n.amount)}</span></button>`).join('')}</div></div>`; }).join('');
+  }
+  const un=S.notes.filter(n=>!n.sent).length;
+  $('#sendBtn').textContent= un ? `Enviar para o computador (${un} nova${un>1?'s':''})` : 'Enviar para o computador';
+  $('#sendBtn').disabled=!S.notes.length;
+  $('#cleanBtn').style.display=S.notes.some(n=>n.sent)?'':'none';
+}
+
+$('#list').addEventListener('click',e=>{ const b=e.target.closest('.item'); if(b) openNote(b.dataset.id); });
+function openNote(id){
+  const n=S.notes.find(x=>x.id===id); if(!n) return;
+  const bg=document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><h3>Editar anotação</h3>
+    ${n.sent?'<div class="warn">Esta anotação já foi enviada para o computador. Se mudar aqui, ela vai de novo como nova — e a antiga continua lá. Nesse caso, exclua a antiga no computador.</div>':''}
+    <label for="eAmt">Quanto?</label><input class="inp amt" id="eAmt" inputmode="decimal" value="${String(n.amount.toFixed(2)).replace('.',',')}">
+    <div class="field"><label for="eDesc">O que foi?</label><input class="inp" id="eDesc" maxlength="80" value="${esc(n.desc)}"></div>
+    <div class="field"><label for="eDate">Data</label><input class="inp" id="eDate" type="date" value="${n.date}" max="${todayISO()}"></div>
+    <div class="row"><button class="btn danger" data-a="del">Excluir</button><button class="btn" data-a="cancel">Cancelar</button><button class="btn" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)" data-a="ok">Salvar</button></div></div>`;
+  document.body.appendChild(bg);
+  const close=()=>bg.remove();
+  bg.addEventListener('click',e=>{ if(e.target===bg) return close(); const a=e.target.closest('[data-a]'); if(!a) return; const act=a.dataset.a;
+    if(act==='cancel') return close();
+    if(act==='del'){ if(!confirm('Excluir esta anotação?')) return; S.notes=S.notes.filter(x=>x!==n); save(); close(); render(); toast('Anotação excluída.'); return; }
+    if(act==='ok'){ const amount=parseAmt(bg.querySelector('#eAmt').value), desc=bg.querySelector('#eDesc').value.replace(/[\r\n·#]+/g,' ').replace(/\s+/g,' ').trim(), d=bg.querySelector('#eDate').value;
+      if(!(amount>0)) return toast('Escreva quanto foi (ex.: 12,50).'); if(!desc) return toast('Escreva o que foi.'); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('Escolha uma data.');
+      if(amount!==n.amount||desc!==n.desc||d!==n.date){ Object.assign(n,{amount,desc,date:d}); if(n.sent){ n.sent=false; n.id=newId(); } }
+      save(); close(); render(); toast('Anotação salva.'); } });
+}
+
+function exportText(list){
+  return 'Os Meus Gastos — anotações\n'+[...list].sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created)
+    .map(n=>`${br(n.date)} · ${n.type==='receita'?'+':'-'}${n.amount.toFixed(2).replace('.',',')} · ${n.desc} #${n.id}`).join('\n')+'\n';
+}
+$('#sendBtn').addEventListener('click',async()=>{
+  let list=S.notes.filter(n=>!n.sent);
+  if(!list.length){ if(!confirm('Todas as anotações já foram enviadas. Enviar todas de novo? (O computador ignora as repetidas.)')) return; list=S.notes; }
+  const text=exportText(list); let ok=false;
+  if(navigator.share){ try{ await navigator.share({title:'Anotações de gastos',text}); ok=true; }catch(e){ if(e&&e.name==='AbortError') return; } }
+  if(!ok){ try{ await navigator.clipboard.writeText(text); ok=true; toast('Copiado. Cole numa mensagem para você mesmo.'); }catch(e){} }
+  if(!ok){ prompt('Copie o texto abaixo:',text); ok=confirm('Conseguiu copiar e enviar?'); }
+  if(ok){ list.forEach(n=>n.sent=true); save(); render(); }
+});
+$('#cleanBtn').addEventListener('click',()=>{ const n=S.notes.filter(x=>x.sent).length;
+  if(!confirm(`Apagar ${n} anotação(ões) já enviada(s) deste telemóvel? Confira antes se elas chegaram ao computador.`)) return;
+  S.notes=S.notes.filter(x=>!x.sent); save(); render(); toast('Anotações enviadas apagadas.'); });
+
+let tt; function toast(msg){ let t=$('.toast'); if(!t){ t=document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
+  t.textContent=msg; clearTimeout(tt); tt=setTimeout(()=>t.remove(),2600); }
+
+setDate(todayISO()); render();
+if(!storageOK) toast('Este navegador não está salvando os dados.');
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
