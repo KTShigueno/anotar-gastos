@@ -4,6 +4,10 @@ Bloco de notas de gastos para o iPhone, bem simples: **o que foi** e **quanto**.
 
 No fim da semana ou do mês, o botão **Enviar para o computador** gera um texto, que você manda para você mesmo (AirDrop, e-mail ou WhatsApp) e cola no programa de controle de gastos do computador.
 
+## Resumo (consulta)
+
+Na aba **Resumo**, o app abre o arquivo de dados que o programa do computador guarda na nuvem (`os-meus-gastos.cofre`, criptografado com a sua senha) e mostra, só para consulta, os gastos e entradas do mês, os gastos por categoria com os orçamentos e os lançamentos. A senha e os dados ficam só na memória do telemóvel e são apagados ao fechar o resumo.
+
 ## Instalar no iPhone
 
 1. Abra o endereço deste app no **Safari**.

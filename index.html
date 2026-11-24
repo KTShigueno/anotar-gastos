@@ -70,14 +70,38 @@ h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted
 .sheet .warn{background:var(--warn-soft);color:var(--warn-ink);border-radius:10px;padding:9px 11px;font-size:14px;margin-bottom:12px}
 .sheet .row .btn{flex:1}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 84px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:15px;z-index:30;max-width:90vw;text-align:center}
+.tabs{display:flex;gap:6px;margin-top:12px;background:rgba(255,255,255,.12);border-radius:12px;padding:3px}
+.tabs button{flex:1;border:0;background:none;color:var(--head-ink);opacity:.8;padding:8px;border-radius:9px;font-weight:600;font-size:15px}
+.tabs button.on{background:rgba(255,255,255,.95);color:#173f8f;opacity:1}
+[hidden]{display:none!important}
+.mnav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+.mnav b{font-size:18px}
+.mnav button{border:1px solid var(--line);background:var(--panel);border-radius:10px;width:40px;height:36px;font-size:18px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.kpi span{display:block;font-size:13px;color:var(--muted);font-weight:600}
+.kpi b{display:block;font-size:20px;margin-top:2px}
+.kpi.wide{grid-column:1/-1}
+.cat{padding:11px 14px;border-top:1px solid var(--line)}
+.cat:first-child{border-top:0}
+.cat .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.cat .top span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat .top b{white-space:nowrap}
+.cat small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+.cat small.over{color:var(--neg);font-weight:600}
+.meter{height:7px;border-radius:9px;background:var(--panel-2);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:9px}
+.help{font-size:14px;color:var(--muted);margin:12px 2px 0;line-height:1.5}
+.tag{font-size:11.5px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-right:4px}
 </style>
 </head>
 <body>
 <header>
   <h1>Anotar gastos</h1>
   <div class="tot" id="tot"></div>
+  <nav class="tabs" id="tabs"><button type="button" class="on" data-v="anotar">✏️ Anotar</button><button type="button" data-v="resumo">📊 Resumo</button></nav>
 </header>
-<main>
+<main id="vAnotar">
   <form class="card" id="form" autocomplete="off">
     <div class="seg" id="type"><button type="button" class="d on" data-t="despesa">Gasto</button><button type="button" class="r" data-t="receita">Entrada</button></div>
     <label for="amt">Quanto?</label>
@@ -92,7 +116,9 @@ h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted
   <div class="links"><button type="button" id="cleanBtn">Apagar as anotações já enviadas</button></div>
   <p class="note">🔒 As anotações ficam só neste telemóvel. Funciona sem internet.</p>
 </main>
-<div class="bar"><button class="btn" id="sendBtn" type="button"></button></div>
+<main id="vResumo" hidden></main>
+<input type="file" id="cofreInput" hidden>
+<div class="bar" id="sendBar"><button class="btn" id="sendBtn" type="button"></button></div>
 
 <script>
 'use strict';
@@ -196,6 +222,78 @@ $('#cleanBtn').addEventListener('click',()=>{ const n=S.notes.filter(x=>x.sent).
 
 let tt; function toast(msg){ let t=$('.toast'); if(!t){ t=document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
   t.textContent=msg; clearTimeout(tt); tt=setTimeout(()=>t.remove(),2600); }
+
+/* ===== Resumo: consulta dos dados do computador (arquivo .cofre do OneDrive, só leitura) ===== */
+// O arquivo é criptografado pelo programa do computador (PBKDF2-SHA256 + AES-GCM). Os dados abertos ficam só na memória.
+let R=null, rMonth=null, hiddenAt=0;
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const monthName=k=>{ const m=MESES[+k.slice(5)-1]; return m[0].toUpperCase()+m.slice(1)+' '+k.slice(0,4); };
+const addMonths=(k,n)=>{ let y=+k.slice(0,4), m=+k.slice(5)-1+n; y+=Math.floor(m/12); m=((m%12)+12)%12; return `${y}-${pad(m+1)}`; };
+async function abrirCofre(txt,pw){
+  let j; try{ j=JSON.parse(txt); }catch(e){ throw new Error('formato'); }
+  if(!j||j.app!=='os-meus-gastos'||!j.data||!j.kdf) throw new Error('formato');
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',hash:j.kdf.hash||'SHA-256',salt:unb64(j.kdf.salt),iterations:j.kdf.iter},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  let pt; try{ pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(j.iv)},key,unb64(j.data)); }catch(e){ throw new Error('senha'); }
+  const d=JSON.parse(new TextDecoder().decode(pt));
+  return {tx:Array.isArray(d.transactions)?d.transactions:[], cats:Array.isArray(d.categories)?d.categories:[], savedAt:j.savedAt};
+}
+function askPw(){ return new Promise(done=>{
+  const bg=document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><h3>Senha do arquivo</h3>
+    <label for="rPw">A mesma senha que você criou no computador</label><input class="inp" id="rPw" type="password" autocomplete="current-password" enterkeyhint="go">
+    <div class="row"><button class="btn" data-a="cancel">Cancelar</button><button class="btn" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)" data-a="ok">Abrir</button></div></div>`;
+  document.body.appendChild(bg); const inp=bg.querySelector('#rPw'), close=v=>{ bg.remove(); done(v); };
+  bg.addEventListener('click',e=>{ if(e.target===bg) return close(null); const a=e.target.closest('[data-a]'); if(!a) return; if(a.dataset.a==='cancel') return close(null); if(inp.value) close(inp.value); });
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&inp.value) close(inp.value); });
+  setTimeout(()=>inp.focus(),50); }); }
+$('#cofreInput').addEventListener('change',async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  const txt=await f.text();
+  try{ const j=JSON.parse(txt); if(!j||j.app!=='os-meus-gastos') throw 0; }catch(err){ return toast('Este não é o arquivo de dados do Os Meus Gastos (os-meus-gastos.cofre).'); }
+  for(;;){ const pw=await askPw(); if(!pw) return;
+    try{ R=await abrirCofre(txt,pw); break; }catch(err){ toast(err.message==='senha'?'Senha incorreta. Tente de novo.':'Não consegui abrir este arquivo.'); if(err.message!=='senha') return; } }
+  const old=$('.toast'); if(old) old.remove();
+  const t=todayISO().slice(0,7), ms=[...new Set(R.tx.map(x=>x.date.slice(0,7)))].sort();
+  rMonth=ms.includes(t)||!ms.length?t:ms[ms.length-1]; renderResumo();
+});
+function renderResumo(){
+  const v=$('#vResumo');
+  if(!R){ v.innerHTML=`<div class="card"><h3 style="margin:0 0 6px">📊 Resumo do computador</h3>
+    <p style="margin:0;color:var(--muted);font-size:15px">Veja quanto já gastou no mês, por categoria, e como estão os orçamentos — com os dados que o programa do computador guarda no OneDrive. Só para consulta.</p>
+    <label class="btn primary" for="cofreInput" style="display:block;text-align:center">Abrir arquivo de dados</label></div>
+    <p class="help">Escolha <b>os-meus-gastos.cofre</b> na pasta <b>Os Meus Gastos</b> do OneDrive e digite a sua senha.<br>
+    Se o OneDrive não aparecer: no app <b>Arquivos</b>, toque em Procurar → <b>⋯</b> → Editar e ative o OneDrive.</p>
+    <p class="note">🔒 A senha e os dados ficam só neste telemóvel, e são apagados da tela quando você fecha o resumo.</p>`; return; }
+  const cat=id=>R.cats.find(c=>c.id===id)||R.cats.find(c=>c.id==='outros')||{name:'Sem categoria',icon:'❔',color:'#8a94a8'};
+  const counted=t=>!cat(t.cat).ignore, inM=R.tx.filter(t=>t.date.startsWith(rMonth));
+  let rec=0,desp=0; const by={}; inM.forEach(t=>{ if(!counted(t)) return; if(t.type==='receita') rec+=t.amount; else { desp+=t.amount; by[t.cat]=(by[t.cat]||0)+t.amount; } });
+  const here=S.notes.filter(n=>!n.sent&&n.type!=='receita'&&n.date.startsWith(rMonth)).reduce((s,n)=>s+n.amount,0);
+  const cats=R.cats.filter(c=>c.type!=='receita'&&!c.ignore&&((by[c.id]||0)>0||(+c.budget||0)>0)).sort((a,b)=>(by[b.id]||0)-(by[a.id]||0));
+  const lanc=[...inM].sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
+  const saved=R.savedAt?new Date(R.savedAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  v.innerHTML=`<div class="mnav"><button type="button" data-m="-1" aria-label="Mês anterior">‹</button><b>${esc(monthName(rMonth))}</b><button type="button" data-m="1" aria-label="Mês seguinte">›</button></div>
+   <div class="kpis"><div class="kpi"><span>Gastos</span><b style="color:var(--neg)">${fmt(desp)}</b></div><div class="kpi"><span>Entradas</span><b style="color:var(--pos)">${fmt(rec)}</b></div>
+    <div class="kpi wide"><span>Saldo do mês</span><b style="color:${rec-desp<0?'var(--neg)':'var(--pos)'}">${fmt(rec-desp)}</b>${here?`<span style="margin-top:4px;font-weight:500">+ ${fmt(here)} anotados neste telemóvel e ainda não enviados</span>`:''}</div></div>
+   <h2>Por categoria</h2>
+   <div class="list">${cats.length?cats.map(c=>{ const sp=by[c.id]||0, bud=+c.budget||0, p=bud?sp/bud:0;
+     return `<div class="cat"><div class="top"><span>${esc(c.icon||'')} ${esc(c.name)}</span><b>${fmt(sp)}</b></div>
+      ${bud?`<div class="meter"><i style="width:${Math.min(100,p*100).toFixed(1)}%;background:${p>1?'var(--neg)':esc(c.color||'var(--accent)')}"></i></div><small class="${p>1?'over':''}">${p>1?`Passou ${fmt(sp-bud)} do orçamento de ${fmt(bud)}`:`${fmt(bud-sp)} livres de ${fmt(bud)}`}</small>`:''}</div>`; }).join('')
+     :'<div class="empty">Nenhum gasto neste mês.</div>'}</div>
+   <h2>Lançamentos (${lanc.length})</h2>
+   <div class="list">${lanc.length?lanc.slice(0,80).map(t=>`<div class="item"><span class="s" style="min-width:38px">${t.date.slice(8,10)}/${t.date.slice(5,7)}</span>
+     <span class="d">${t.prov?'<span class="tag">📝</span>':''}${esc(t.notes&&t.nid?t.notes:t.desc)}</span><span class="v ${t.type==='receita'?'pos':'neg'}">${t.type==='receita'?'+':'−'}${fmt(t.amount)}</span></div>`).join('')
+     :'<div class="empty">Nenhum lançamento neste mês.</div>'}</div>
+   <p class="note">Dados do computador${saved?` salvos em ${esc(saved)}`:''}. Só para consulta.</p>
+   <button type="button" class="btn" id="rClose" style="width:100%;margin-top:14px">Fechar o resumo</button>`;
+}
+$('#vResumo').addEventListener('click',e=>{ const m=e.target.closest('[data-m]'); if(m){ rMonth=addMonths(rMonth,+m.dataset.m); renderResumo(); window.scrollTo(0,0); return; }
+  if(e.target.closest('#rClose')){ R=null; renderResumo(); } });
+function showView(v){ $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('#vAnotar').hidden=v!=='anotar'; $('#sendBar').hidden=v!=='anotar'; $('#vResumo').hidden=v!=='resumo'; if(v==='resumo') renderResumo(); window.scrollTo(0,0); }
+$('#tabs').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) showView(b.dataset.v); });
+// por segurança, os dados abertos somem depois de 10 minutos com o app em segundo plano
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) hiddenAt=Date.now(); else if(R&&hiddenAt&&Date.now()-hiddenAt>10*60*1000){ R=null; renderResumo(); } });
 
 setDate(todayISO()); render();
 if(!storageOK) toast('Este navegador não está salvando os dados.');
